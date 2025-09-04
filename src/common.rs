@@ -18,8 +18,8 @@ pub const TO_TEREDO: u128 = 0x2001_0000_ffff_ffff_ffff_ffff_ffff_ffff;
 
 #[derive(Debug)]
 pub enum DB {
-    LocationDb(LocationDB),
-    ProxyDb(ProxyDB),
+    LocationDb(LocationDB<MmapSource>),
+    ProxyDb(ProxyDB<MmapSource>),
 }
 
 #[derive(Debug)]
@@ -29,50 +29,23 @@ pub enum Record<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Source {
+pub struct MmapSource {
     path: PathBuf,
     map: Mmap,
 }
 
-impl std::fmt::Display for Source {
+impl std::fmt::Display for MmapSource {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.path.display())
     }
 }
 
-impl Source {
-    pub fn new(path: PathBuf, map: Mmap) -> Self {
-        Self { path, map }
-    }
-
-    pub fn read_u8(&self, offset: u64) -> Result<u8, Error> {
-        Ok(self.map[(offset - 1) as usize])
-    }
-
-    pub fn read_u32(&self, offset: u64) -> Result<u32, Error> {
-        let result = u32::from_ne_bytes(
-            self.map[(offset - 1) as usize..(offset + 3) as usize]
-                .try_into()?,
-        );
-        Ok(result)
-    }
-
-    pub fn read_f32(&self, offset: u64) -> Result<f32, Error> {
-        let result = f32::from_ne_bytes(
-            self.map[(offset - 1) as usize..(offset + 3) as usize]
-                .try_into()?,
-        );
-        Ok(result)
-    }
-
-    pub fn read_str(&self, offset: u64) -> Result<Cow<'_, str>, Error> {
-        let len = self.read_u8(offset + 1)? as usize;
-        let s =
-            String::from_utf8_lossy(&self.map[(offset + 1) as usize..(offset + 1) as usize + len]);
-        Ok(s)
-    }
-
-    pub fn read_ipv6(&self, offset: u64) -> Result<Ipv6Addr, Error> {
+pub trait Source {
+    fn read_u8(&self, offset: u64) -> Result<u8, Error>;
+    fn read_u32(&self, offset: u64) -> Result<u32, Error>;
+    fn read_f32(&self, offset: u64) -> Result<f32, Error>;
+    fn read_str(&self, offset: u64) -> Result<Cow<'_, str>, Error>;
+    fn read_ipv6(&self, offset: u64) -> Result<Ipv6Addr, Error> {
         let mut buf = [0_u8; 16];
         let mut i = 0;
         let mut j = 15;
@@ -86,9 +59,43 @@ impl Source {
     }
 }
 
+impl MmapSource {
+    pub fn new(path: PathBuf, map: Mmap) -> Self {
+        Self { path, map }
+    }
+}
+impl Source for MmapSource {
+    fn read_u8(&self, offset: u64) -> Result<u8, Error> {
+        Ok(self.map[(offset - 1) as usize])
+    }
+
+    fn read_u32(&self, offset: u64) -> Result<u32, Error> {
+        let result = u32::from_ne_bytes(
+            self.map[(offset - 1) as usize..(offset + 3) as usize]
+                .try_into()?,
+        );
+        Ok(result)
+    }
+
+    fn read_f32(&self, offset: u64) -> Result<f32, Error> {
+        let result = f32::from_ne_bytes(
+            self.map[(offset - 1) as usize..(offset + 3) as usize]
+                .try_into()?,
+        );
+        Ok(result)
+    }
+
+    fn read_str(&self, offset: u64) -> Result<Cow<'_, str>, Error> {
+        let len = self.read_u8(offset + 1)? as usize;
+        let s =
+            String::from_utf8_lossy(&self.map[(offset + 1) as usize..(offset + 1) as usize + len]);
+        Ok(s)
+    }
+}
+
 impl DB {
     /// Consume the unopened db and mmap the file.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<DB, Error> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         //! Loads a Ip2Location/Ip2Proxy Database .bin file from path using
         //! mmap (memap) feature.
         //!
@@ -131,7 +138,7 @@ impl DB {
         }
     }
 
-    pub fn ip_lookup(&self, ip: IpAddr) -> Result<Record, Error> {
+    pub fn ip_lookup(&self, ip: IpAddr) -> Result<Record<'_>, Error> {
         //! Lookup for the given IPv4 or IPv6 and returns the
         //! Geo information or Proxy Information
         //!

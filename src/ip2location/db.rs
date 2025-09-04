@@ -1,5 +1,5 @@
 use crate::{
-    common::{Source, FROM_6TO4, FROM_TEREDO, TO_6TO4, TO_TEREDO},
+    common::{FROM_6TO4, FROM_TEREDO, MmapSource, Source, TO_6TO4, TO_TEREDO},
     error::Error,
     ip2location::{
         consts::*,
@@ -15,7 +15,7 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct LocationDB {
+pub struct LocationDB<S> {
     db_type: u8,
     db_column: u8,
     db_year: u8,
@@ -30,30 +30,10 @@ pub struct LocationDB {
     product_code: u8,
     license_code: u8,
     database_size: u32,
-    source: Source,
+    source: S,
 }
 
-impl LocationDB {
-    pub(crate) fn new(source: Source) -> Self {
-        Self {
-            db_type: 0,
-            db_column: 0,
-            db_year: 0,
-            db_month: 0,
-            db_day: 0,
-            ipv4_db_count: 0,
-            ipv4_db_addr: 0,
-            ipv6_db_count: 0,
-            ipv6_db_addr: 0,
-            ipv4_index_base_addr: 0,
-            ipv6_index_base_addr: 0,
-            product_code: 0,
-            license_code: 0,
-            database_size: 0,
-            source,
-        }
-    }
-
+impl LocationDB<MmapSource> {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         //! Loads a Ip2Location Database .bin file from path using
         //! mmap (memap) feature.
@@ -73,11 +53,10 @@ impl LocationDB {
 
         let db = File::open(&path)?;
         let map = unsafe { Mmap::map(&db) }?;
-        let mut ldb = Self::new(Source::new(path.as_ref().to_path_buf(), map));
+        let mut ldb = Self::new(MmapSource::new(path.as_ref().to_path_buf(), map));
         ldb.read_header()?;
         Ok(ldb)
     }
-
     pub fn print_db_info(&self) {
         //! Prints the DB Information to console
         //!
@@ -97,8 +76,30 @@ impl LocationDB {
             self.db_year, self.db_month, self.db_day
         );
     }
+}
 
-    pub fn ip_lookup(&self, ip: IpAddr) -> Result<LocationRecord, Error> {
+impl<S: Source> LocationDB<S> {
+    pub fn new(source: S) -> Self {
+        Self {
+            db_type: 0,
+            db_column: 0,
+            db_year: 0,
+            db_month: 0,
+            db_day: 0,
+            ipv4_db_count: 0,
+            ipv4_db_addr: 0,
+            ipv6_db_count: 0,
+            ipv6_db_addr: 0,
+            ipv4_index_base_addr: 0,
+            ipv6_index_base_addr: 0,
+            product_code: 0,
+            license_code: 0,
+            database_size: 0,
+            source,
+        }
+    }
+
+    pub fn ip_lookup(&self, ip: IpAddr) -> Result<LocationRecord<'_>, Error> {
         //! Lookup for the given IPv4 or IPv6 and returns the Geo information
         //!
         //! ## Example usage
@@ -168,7 +169,7 @@ impl LocationDB {
         }
     }
 
-    fn ipv4_lookup(&self, mut ip_number: u32) -> Result<LocationRecord, Error> {
+    fn ipv4_lookup(&self, mut ip_number: u32) -> Result<LocationRecord<'_>, Error> {
         if ip_number == u32::MAX {
             ip_number -= 1;
         }
@@ -198,7 +199,7 @@ impl LocationDB {
         Err(Error::RecordNotFound)
     }
 
-    fn ipv6_lookup(&self, ipv6: Ipv6Addr) -> Result<LocationRecord, Error> {
+    fn ipv6_lookup(&self, ipv6: Ipv6Addr) -> Result<LocationRecord<'_>, Error> {
         let mut low = 0;
         let mut high = self.ipv6_db_count;
         if self.ipv6_index_base_addr > 0 {
@@ -228,7 +229,7 @@ impl LocationDB {
         Err(Error::RecordNotFound)
     }
 
-    fn read_record(&self, row_addr: u32) -> Result<LocationRecord, Error> {
+    fn read_record(&self, row_addr: u32) -> Result<LocationRecord<'_>, Error> {
         let mut result = LocationRecord::default();
 
         if COUNTRY_POSITION[self.db_type as usize] > 0 {

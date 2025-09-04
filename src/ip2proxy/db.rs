@@ -1,5 +1,5 @@
 use crate::{
-    common::{Source, FROM_6TO4, FROM_TEREDO, TO_6TO4, TO_TEREDO},
+    common::{FROM_6TO4, FROM_TEREDO, MmapSource, Source, TO_6TO4, TO_TEREDO},
     error::Error,
     ip2proxy::{
         consts::*,
@@ -15,7 +15,7 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct ProxyDB {
+pub struct ProxyDB<S> {
     //    path: PathBuf,
     db_type: u8,
     db_column: u8,
@@ -31,11 +31,46 @@ pub struct ProxyDB {
     licence_code: u8,
     product_code: u8,
     database_size: u32,
-    source: Source,
+    source: S,
 }
 
-impl ProxyDB {
-    pub(crate) fn new(source: Source) -> Self {
+impl ProxyDB<MmapSource> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+        //! Loads a Ip2Proxy Database .bin file from path using
+        //! mmap (memap) feature.
+        //!
+        //! ## Example usage
+        //!
+        //!```rust
+        //! use ip2location::DB;
+        //!
+        //! let mut db = DB::from_file("data/IP2PROXY-IP-COUNTRY.BIN").unwrap();
+        //!```
+        if !path.as_ref().exists() {
+            return Err(Error::IoError(
+                "Error opening DB file: No such file or directory".to_string(),
+            ));
+        }
+
+        let db = File::open(&path)?;
+        let map = unsafe { Mmap::map(&db) }?;
+        let mut pdb = Self::new(MmapSource::new(path.as_ref().to_path_buf(), map));
+        pdb.read_header()?;
+        Ok(pdb)
+    }
+    pub fn print_db_info(&self) {
+        println!("Db Path: {}", self.source);
+        println!(" |- Db Type: {}", self.db_type);
+        println!(" |- Db Column: {}", self.db_column);
+        println!(
+            " |- Db Date (YY/MM/DD): {}/{}/{}",
+            self.db_year, self.db_month, self.db_day
+        );
+    }
+}
+
+impl<S: Source> ProxyDB<S> {
+    pub fn new(source: S) -> Self {
         Self {
             //            path: db.path,
             db_type: 0,
@@ -56,31 +91,12 @@ impl ProxyDB {
         }
     }
 
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        //! Loads a Ip2Proxy Database .bin file from path using
-        //! mmap (memap) feature.
-        //!
-        //! ## Example usage
-        //!
-        //!```rust
-        //! use ip2location::DB;
-        //!
-        //! let mut db = DB::from_file("data/IP2PROXY-IP-COUNTRY.BIN").unwrap();
-        //!```
-        if !path.as_ref().exists() {
-            return Err(Error::IoError(
-                "Error opening DB file: No such file or directory".to_string(),
-            ));
-        }
-
-        let db = File::open(&path)?;
-        let map = unsafe { Mmap::map(&db) }?;
-        let mut pdb = Self::new(Source::new(path.as_ref().to_path_buf(), map));
-        pdb.read_header()?;
-        Ok(pdb)
+    // returns (year, month, day)
+    pub fn db_date(&self) -> (u8, u8, u8) {
+        (self.db_year, self.db_month, self.db_day)
     }
 
-    pub fn ip_lookup(&self, ip: IpAddr) -> Result<ProxyRecord, Error> {
+    pub fn ip_lookup(&self, ip: IpAddr) -> Result<ProxyRecord<'_>, Error> {
         //! Lookup for the given IPv4 or IPv6 and returns the Proxy information
         //!
         //! ## Example usage
@@ -127,15 +143,6 @@ impl ProxyDB {
         }
     }
 
-    pub fn print_db_info(&self) {
-        println!("Db Path: {}", self.source);
-        println!(" |- Db Type: {}", self.db_type);
-        println!(" |- Db Column: {}", self.db_column);
-        println!(
-            " |- Db Date (YY/MM/DD): {}/{}/{}",
-            self.db_year, self.db_month, self.db_day
-        );
-    }
 
     fn read_header(&mut self) -> Result<(), Error> {
         self.db_type = self.source.read_u8(1)?;
@@ -159,7 +166,7 @@ impl ProxyDB {
         }
     }
 
-    fn get_ipv4_record(&self, mut ip_number: u32) -> Result<ProxyRecord, Error> {
+    fn get_ipv4_record(&self, mut ip_number: u32) -> Result<ProxyRecord<'_>, Error> {
         let mut ip_from: u32;
         let mut ip_to: u32;
         if ip_number == MAX_IPV4_RANGE {
@@ -201,7 +208,7 @@ impl ProxyDB {
         Err(Error::RecordNotFound)
     }
 
-    fn get_ipv6_record(&self, ip_address: Ipv6Addr) -> Result<ProxyRecord, Error> {
+    fn get_ipv6_record(&self, ip_address: Ipv6Addr) -> Result<ProxyRecord<'_>, Error> {
         let base_address = self.ipv6_db_addr;
         let database_column = self.db_column;
         let ipv6_index_base_address = self.ipv4_index_base_addr;
@@ -244,7 +251,7 @@ impl ProxyDB {
         Err(Error::RecordNotFound)
     }
 
-    fn read_record(&self, offset: u32) -> Result<ProxyRecord, Error> {
+    fn read_record(&self, offset: u32) -> Result<ProxyRecord<'_>, Error> {
         let db_type = self.db_type as usize;
         let mut record = ProxyRecord::default();
 
