@@ -1,5 +1,5 @@
 mod common;
-pub use common::{Record, DB};
+pub use common::{Record, DB, Source};
 
 pub mod error;
 
