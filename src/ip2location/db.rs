@@ -53,9 +53,7 @@ impl LocationDB<MmapSource> {
 
         let db = File::open(&path)?;
         let map = unsafe { Mmap::map(&db) }?;
-        let mut ldb = Self::new(MmapSource::new(path.as_ref().to_path_buf(), map));
-        ldb.read_header()?;
-        Ok(ldb)
+        Self::new(MmapSource::new(path.as_ref().to_path_buf(), map))
     }
     pub fn print_db_info(&self) {
         //! Prints the DB Information to console
@@ -79,8 +77,8 @@ impl LocationDB<MmapSource> {
 }
 
 impl<S: Source> LocationDB<S> {
-    pub fn new(source: S) -> Self {
-        Self {
+    pub fn new(source: S) -> Result<Self, Error> {
+        let mut ldb = Self {
             db_type: 0,
             db_column: 0,
             db_year: 0,
@@ -96,7 +94,9 @@ impl<S: Source> LocationDB<S> {
             license_code: 0,
             database_size: 0,
             source,
-        }
+        };
+        ldb.read_header()?;
+        Ok(ldb)
     }
 
     pub fn ip_lookup(&self, ip: IpAddr) -> Result<LocationRecord<'_>, Error> {
@@ -182,9 +182,10 @@ impl<S: Source> LocationDB<S> {
         }
         while low <= high {
             let mid = (low + high) >> 1;
+            let offset = (self.ipv4_db_addr + mid * (self.db_column as u32) * 4) as u64;
             let ip_from = self
                 .source
-                .read_u32((self.ipv4_db_addr + mid * (self.db_column as u32) * 4) as u64)?;
+                .read_u32(offset)?;
             let ip_to = self
                 .source
                 .read_u32((self.ipv4_db_addr + (mid + 1) * (self.db_column as u32) * 4) as u64)?;
