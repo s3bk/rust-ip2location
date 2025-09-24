@@ -1,4 +1,4 @@
-use std::{fmt, io};
+use std::{fmt, io, num::TryFromIntError};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -7,6 +7,7 @@ pub enum Error {
     RecordNotFound,
     UnknownDb,
     InvalidBinDatabase(u8, u8),
+    OutOfBounds,
 }
 
 impl From<io::Error> for Error {
@@ -53,6 +54,7 @@ impl std::fmt::Display for Error {
                 "Unknown database: Database type should be Proxy or Location"
             )?,
             Error::InvalidBinDatabase(y, p) => write!(f, "Invalid Bin Database: {} {}", y, p)?,
+            Error::OutOfBounds => write!(f, "Out of bounds")?,
         }
         Ok(())
     }

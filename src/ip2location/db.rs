@@ -177,18 +177,18 @@ impl<S: Source> LocationDB<S> {
         let mut high = self.ipv4_db_count;
         if self.ipv4_index_base_addr > 0 {
             let index = ((ip_number >> 16) << 3) + self.ipv4_index_base_addr;
-            low = self.source.read_u32(index as u64)?;
-            high = self.source.read_u32((index + 4) as u64)?;
+            low = self.source.read_u32(index)?;
+            high = self.source.read_u32(index + 4)?;
         }
         while low <= high {
             let mid = (low + high) >> 1;
-            let offset = (self.ipv4_db_addr + mid * (self.db_column as u32) * 4) as u64;
+            let offset = (self.ipv4_db_addr + mid * (self.db_column as u32) * 4);
             let ip_from = self
                 .source
                 .read_u32(offset)?;
             let ip_to = self
                 .source
-                .read_u32((self.ipv4_db_addr + (mid + 1) * (self.db_column as u32) * 4) as u64)?;
+                .read_u32((self.ipv4_db_addr + (mid + 1) * (self.db_column as u32) * 4))?;
             if (ip_number >= ip_from) && (ip_number < ip_to) {
                 return self.read_record(self.ipv4_db_addr + mid * (self.db_column as u32) * 4);
             } else if ip_number < ip_from {
@@ -206,16 +206,16 @@ impl<S: Source> LocationDB<S> {
         if self.ipv6_index_base_addr > 0 {
             let num = (ipv6.octets()[0] as u32) * 256 + (ipv6.octets()[1] as u32);
             let index = (num << 3) + self.ipv6_index_base_addr;
-            low = self.source.read_u32(index as u64)?;
-            high = self.source.read_u32((index + 4) as u64)?;
+            low = self.source.read_u32(index)?;
+            high = self.source.read_u32((index + 4))?;
         }
         while low <= high {
             let mid = (low + high) >> 1;
             let ip_from = self
                 .source
-                .read_ipv6((self.ipv6_db_addr + mid * ((self.db_column as u32) * 4 + 12)) as u64)?;
+                .read_ipv6((self.ipv6_db_addr + mid * ((self.db_column as u32) * 4 + 12)))?;
             let ip_to = self.source.read_ipv6(
-                (self.ipv6_db_addr + (mid + 1) * ((self.db_column as u32) * 4 + 12)) as u64,
+                (self.ipv6_db_addr + (mid + 1) * ((self.db_column as u32) * 4 + 12)),
             )?;
             if (ipv6 >= ip_from) && (ipv6 < ip_to) {
                 return self.read_record(
@@ -236,9 +236,9 @@ impl<S: Source> LocationDB<S> {
         if COUNTRY_POSITION[self.db_type as usize] > 0 {
             let index = self
                 .source
-                .read_u32((row_addr + 4 * (COUNTRY_POSITION[self.db_type as usize] - 1)).into())?;
-            let short_name = self.source.read_str(index.into())?;
-            let long_name = self.source.read_str((index + 3).into())?;
+                .read_u32((row_addr + 4 * (COUNTRY_POSITION[self.db_type as usize] - 1)))?;
+            let short_name = self.source.read_str(index)?;
+            let long_name = self.source.read_str((index + 3))?;
             result.country = Some(record::Country {
                 short_name,
                 long_name,
@@ -248,18 +248,18 @@ impl<S: Source> LocationDB<S> {
         if REGION_POSITION[self.db_type as usize] > 0 {
             let index = self
                 .source
-                .read_u32((row_addr + 4 * (REGION_POSITION[self.db_type as usize] - 1)).into())?;
-            result.region = Some(self.source.read_str(index.into())?);
+                .read_u32((row_addr + 4 * (REGION_POSITION[self.db_type as usize] - 1)))?;
+            result.region = Some(self.source.read_str(index)?);
         }
 
         if LATITUDE_POSITION[self.db_type as usize] > 0 {
             let index = row_addr + 4 * (LATITUDE_POSITION[self.db_type as usize] - 1);
-            result.latitude = Some(self.source.read_f32(index.into())?);
+            result.latitude = Some(self.source.read_f32(index)?);
         }
 
         if LONGITUDE_POSITION[self.db_type as usize] > 0 {
             let index = row_addr + 4 * (LONGITUDE_POSITION[self.db_type as usize] - 1);
-            result.longitude = Some(self.source.read_f32(index.into())?);
+            result.longitude = Some(self.source.read_f32(index)?);
         }
 
         if CITY_POSITION[self.db_type as usize] > 0 {

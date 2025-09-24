@@ -186,17 +186,17 @@ impl<S: Source> ProxyDB<S> {
             let index_pos = ipv4_index_base_address + (number << 3);
             //            let index_buffer = &mut vec![0_u8; 8];
             mem_offset = index_pos;
-            low = self.source.read_u32(mem_offset as u64)?;
-            high = self.source.read_u32((mem_offset + 4) as u64)?;
+            low = self.source.read_u32(mem_offset)?;
+            high = self.source.read_u32((mem_offset + 4))?;
         }
         while low <= high {
             mid = (low + high) >> 1;
             row_offset = base_address + (mid * column_offset as u32);
             mem_offset = row_offset;
-            ip_from = self.source.read_u32(mem_offset as u64)?;
+            ip_from = self.source.read_u32(mem_offset)?;
             ip_to = self
                 .source
-                .read_u32(mem_offset as u64 + column_offset as u64)?;
+                .read_u32(mem_offset + column_offset as u32)?;
             if ip_number >= ip_from && ip_number < ip_to {
                 return self.read_record(mem_offset + 4);
             } else if ip_number < ip_from {
@@ -228,18 +228,18 @@ impl<S: Source> ProxyDB<S> {
             let index_pos = ipv6_index_base_address + (number << 3);
             //let index_buffer = &mut vec![0_u8; 8];
             mem_offset = index_pos;
-            low = self.source.read_u32(mem_offset as u64)?;
-            high = self.source.read_u32((mem_offset + 4) as u64)?;
+            low = self.source.read_u32(mem_offset)?;
+            high = self.source.read_u32((mem_offset + 4))?;
         }
         while low <= high {
             mid = (low + high) >> 1;
             row_offset = base_address + (mid + column_offset as u32);
 
             mem_offset = row_offset;
-            ip_from = self.source.read_ipv6(mem_offset as u64)?;
+            ip_from = self.source.read_ipv6(mem_offset)?;
             ip_to = self
                 .source
-                .read_ipv6((mem_offset + column_offset as u32) as u64)?;
+                .read_ipv6((mem_offset + column_offset as u32))?;
             if ip_address > ip_from && ip_address < ip_to {
                 return self.read_record(mem_offset + 16);
             } else if ip_address < ip_from {
@@ -258,83 +258,83 @@ impl<S: Source> ProxyDB<S> {
         if REGION_POSITION[db_type] != 0 && record.region.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (REGION_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.region = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (REGION_POSITION[db_type] - 2) + offset )?;
+            record.region = Some(self.source.read_str(index)?);
         }
         if CITY_POSITION[db_type] != 0 && record.city.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (CITY_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.city = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (CITY_POSITION[db_type] - 2) + offset)?;
+            record.city = Some(self.source.read_str(index)?);
         }
         if ISP_POSITION[db_type] != 0 && record.isp.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (ISP_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.isp = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (ISP_POSITION[db_type] - 2) + offset)?;
+            record.isp = Some(self.source.read_str(index)?);
         }
         if PROXY_TYPE_POSITION[db_type] != 0 && record.proxy_type.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (PROXY_TYPE_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.proxy_type = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (PROXY_TYPE_POSITION[db_type] - 2) + offset)?;
+            record.proxy_type = Some(self.source.read_str(index)?);
         }
         if DOMAIN_POSITION[db_type] != 0 && record.domain.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (DOMAIN_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.domain = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (DOMAIN_POSITION[db_type] - 2) + offset)?;
+            record.domain = Some(self.source.read_str(index)?);
         }
         if USAGE_TYPE_POSITION[db_type] != 0 && record.usage_type.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (USAGE_TYPE_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.usage_type = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (USAGE_TYPE_POSITION[db_type] - 2) + offset)?;
+            record.usage_type = Some(self.source.read_str(index)?);
         }
         if ASN_POSITION[db_type] != 0 && record.asn.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (ASN_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.asn = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (ASN_POSITION[db_type] - 2) + offset)?;
+            record.asn = Some(self.source.read_str(index)?);
         }
         if AS_POSITION[db_type] != 0 && record.as_.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (AS_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.as_ = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (AS_POSITION[db_type] - 2) + offset)?;
+            record.as_ = Some(self.source.read_str(index)?);
         }
         if LAST_SEEN_POSITION[db_type] != 0 && record.last_seen.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (LAST_SEEN_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.last_seen = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (LAST_SEEN_POSITION[db_type] - 2) + offset)?;
+            record.last_seen = Some(self.source.read_str(index)?);
         }
         if THREAT_POSITION[db_type] != 0 && record.threat.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (THREAT_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.threat = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (THREAT_POSITION[db_type] - 2) + offset)?;
+            record.threat = Some(self.source.read_str(index)?);
         }
         if PROVIDER_POSITION[db_type] != 0 && record.provider.is_none() {
             let index = self
                 .source
-                .read_u32(4 * (PROVIDER_POSITION[db_type] - 2) as u64 + offset as u64)?;
-            record.provider = Some(self.source.read_str(index as u64)?);
+                .read_u32(4 * (PROVIDER_POSITION[db_type] - 2) + offset)?;
+            record.provider = Some(self.source.read_str(index)?);
         }
         if COUNTRY_POSITION[db_type] != 0 {
             let index = self
                 .source
-                .read_u32(offset as u64 + 4 * (COUNTRY_POSITION[db_type] - 2) as u64)?;
-            let country_short = self.source.read_str(index as u64)?;
-            let country_long = self.source.read_str(index as u64 + 3)?;
+                .read_u32(offset + 4 * (COUNTRY_POSITION[db_type] - 2))?;
+            let country_short = self.source.read_str(index)?;
+            let country_long = self.source.read_str(index + 3)?;
             if country_short == "-" {
                 record.is_proxy = Some(Proxy::IsNotAProxy);
             } else {
                 if record.proxy_type.is_none() {
                     let index = self
                         .source
-                        .read_u32(4 * (COUNTRY_POSITION[db_type] - 2) as u64 + offset as u64)?;
-                    record.proxy_type = Some(self.source.read_str(index as u64)?);
+                        .read_u32(4 * (COUNTRY_POSITION[db_type] - 2) + offset)?;
+                    record.proxy_type = Some(self.source.read_str(index)?);
                 }
                 if record.proxy_type == Some(Cow::from("DCH"))
                     || record.proxy_type == Some(Cow::from("SES"))

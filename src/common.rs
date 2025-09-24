@@ -41,11 +41,11 @@ impl std::fmt::Display for MmapSource {
 }
 
 pub trait Source {
-    fn read_u8(&self, offset: u64) -> Result<u8, Error>;
-    fn read_u32(&self, offset: u64) -> Result<u32, Error>;
-    fn read_f32(&self, offset: u64) -> Result<f32, Error>;
-    fn read_str(&self, offset: u64) -> Result<Cow<'_, str>, Error>;
-    fn read_ipv6(&self, offset: u64) -> Result<Ipv6Addr, Error> {
+    fn read_u8(&self, offset: u32) -> Result<u8, Error>;
+    fn read_u32(&self, offset: u32) -> Result<u32, Error>;
+    fn read_f32(&self, offset: u32) -> Result<f32, Error>;
+    fn read_str(&self, offset: u32) -> Result<Cow<'_, str>, Error>;
+    fn read_ipv6(&self, offset: u32) -> Result<Ipv6Addr, Error> {
         let mut buf = [0_u8; 16];
         let mut i = 0;
         let mut j = 15;
@@ -65,30 +65,35 @@ impl MmapSource {
     }
 }
 impl Source for MmapSource {
-    fn read_u8(&self, offset: u64) -> Result<u8, Error> {
-        Ok(self.map[(offset - 1) as usize])
+    fn read_u8(&self, offset: u32) -> Result<u8, Error> {
+        let offset = offset as usize;
+        Ok(*self.map.get(offset - 1).ok_or(Error::OutOfBounds)?)
     }
 
-    fn read_u32(&self, offset: u64) -> Result<u32, Error> {
+    fn read_u32(&self, offset: u32) -> Result<u32, Error> {
+        let offset = offset as usize;
         let result = u32::from_ne_bytes(
-            self.map[(offset - 1) as usize..(offset + 3) as usize]
+            self.map.get(offset - 1 .. offset + 3).ok_or(Error::OutOfBounds)?
                 .try_into()?,
         );
         Ok(result)
     }
 
-    fn read_f32(&self, offset: u64) -> Result<f32, Error> {
+    fn read_f32(&self, offset: u32) -> Result<f32, Error> {
+        let offset = offset as usize;
         let result = f32::from_ne_bytes(
-            self.map[(offset - 1) as usize..(offset + 3) as usize]
+            self.map.get(offset - 1 .. offset + 3).ok_or(Error::OutOfBounds)?
                 .try_into()?,
         );
         Ok(result)
     }
 
-    fn read_str(&self, offset: u64) -> Result<Cow<'_, str>, Error> {
+    fn read_str(&self, offset: u32) -> Result<Cow<'_, str>, Error> {
         let len = self.read_u8(offset + 1)? as usize;
+        let start = offset as usize + 1;
+        let end = start + len;
         let s =
-            String::from_utf8_lossy(&self.map[(offset + 1) as usize..(offset + 1) as usize + len]);
+            String::from_utf8_lossy(self.map.get(start..end).ok_or(Error::OutOfBounds)?);
         Ok(s)
     }
 }
