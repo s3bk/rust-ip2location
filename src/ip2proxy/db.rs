@@ -187,7 +187,7 @@ impl<S: Source> ProxyDB<S> {
             //            let index_buffer = &mut vec![0_u8; 8];
             mem_offset = index_pos;
             low = self.source.read_u32(mem_offset)?;
-            high = self.source.read_u32((mem_offset + 4))?;
+            high = self.source.read_u32(mem_offset + 4)?;
         }
         while low <= high {
             mid = (low + high) >> 1;
@@ -229,7 +229,7 @@ impl<S: Source> ProxyDB<S> {
             //let index_buffer = &mut vec![0_u8; 8];
             mem_offset = index_pos;
             low = self.source.read_u32(mem_offset)?;
-            high = self.source.read_u32((mem_offset + 4))?;
+            high = self.source.read_u32(mem_offset + 4)?;
         }
         while low <= high {
             mid = (low + high) >> 1;
@@ -239,7 +239,7 @@ impl<S: Source> ProxyDB<S> {
             ip_from = self.source.read_ipv6(mem_offset)?;
             ip_to = self
                 .source
-                .read_ipv6((mem_offset + column_offset as u32))?;
+                .read_ipv6(mem_offset + column_offset as u32)?;
             if ip_address > ip_from && ip_address < ip_to {
                 return self.read_record(mem_offset + 16);
             } else if ip_address < ip_from {

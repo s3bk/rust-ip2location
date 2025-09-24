@@ -1,4 +1,4 @@
-use std::{fmt, io, num::TryFromIntError};
+use std::{fmt, io};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
