@@ -1,12 +1,18 @@
 use crate::{
-    common::{FROM_6TO4, FROM_TEREDO, MmapSource, Source, TO_6TO4, TO_TEREDO},
+    common::{FROM_6TO4, FROM_TEREDO, Source, TO_6TO4, TO_TEREDO},
     error::Error,
     ip2proxy::{
         consts::*,
         record::{Country, Proxy, ProxyRecord},
     },
 };
+
+#[cfg(feature="mmap")]
+use crate::common::MmapSource;
+
+#[cfg(feature="mmap")]
 use memmap2::Mmap;
+
 use std::{
     borrow::Cow,
     fs::File,
@@ -34,6 +40,7 @@ pub struct ProxyDB<S> {
     source: S,
 }
 
+#[cfg(feature="mmap")]
 impl ProxyDB<MmapSource> {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         //! Loads a Ip2Proxy Database .bin file from path using

@@ -1,5 +1,8 @@
 mod common;
-pub use common::{Record, DB, Source, MmapSource};
+pub use common::{Record, DB, Source};
+
+#[cfg(feature="mmap")]
+pub use common::MmapSource;
 
 pub mod error;
 

@@ -3,6 +3,8 @@ use crate::{
     ip2location::{db::LocationDB, record::LocationRecord},
     ip2proxy::{db::ProxyDB, record::ProxyRecord},
 };
+
+#[cfg(feature="mmap")]
 use memmap2::Mmap;
 use std::{
     borrow::Cow,
@@ -17,9 +19,9 @@ pub const FROM_TEREDO: u128 = 0x2001_0000_0000_0000_0000_0000_0000_0000;
 pub const TO_TEREDO: u128 = 0x2001_0000_ffff_ffff_ffff_ffff_ffff_ffff;
 
 #[derive(Debug)]
-pub enum DB {
-    LocationDb(LocationDB<MmapSource>),
-    ProxyDb(ProxyDB<MmapSource>),
+pub enum DB<S: Source> {
+    LocationDb(LocationDB<S>),
+    ProxyDb(ProxyDB<S>),
 }
 
 #[derive(Debug)]
@@ -28,12 +30,14 @@ pub enum Record<'a> {
     ProxyDb(Box<ProxyRecord<'a>>),
 }
 
+#[cfg(feature="mmap")]
 #[derive(Debug)]
 pub struct MmapSource {
     path: PathBuf,
     map: Mmap,
 }
 
+#[cfg(feature="mmap")]
 impl std::fmt::Display for MmapSource {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.path.display())
@@ -59,11 +63,13 @@ pub trait Source {
     }
 }
 
+#[cfg(feature="mmap")]
 impl MmapSource {
     pub fn new(path: PathBuf, map: Mmap) -> Self {
         Self { path, map }
     }
 }
+#[cfg(feature="mmap")]
 impl Source for MmapSource {
     fn read_u8(&self, offset: u32) -> Result<u8, Error> {
         let offset = offset as usize;
@@ -98,7 +104,8 @@ impl Source for MmapSource {
     }
 }
 
-impl DB {
+#[cfg(feature="mmap")]
+impl DB<MmapSource> {
     /// Consume the unopened db and mmap the file.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         //! Loads a Ip2Location/Ip2Proxy Database .bin file from path using
@@ -142,7 +149,8 @@ impl DB {
             Self::ProxyDb(db) => db.print_db_info(),
         }
     }
-
+}
+impl<S: Source> DB<S> {
     pub fn ip_lookup(&self, ip: IpAddr) -> Result<Record<'_>, Error> {
         //! Lookup for the given IPv4 or IPv6 and returns the
         //! Geo information or Proxy Information

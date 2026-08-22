@@ -15,8 +15,12 @@ repository = "https://github.com/marirs/rust-ip2location"
 homepage = "https://github.com/marirs/rust-ip2location"
 edition = "2021"
 
+[features]
+mmap = ["memmap2"]
+default = ["mmap"]
+
 [dependencies]
-memmap2 = "0.9"
+memmap2 = { version = "0.9", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_with = "3.11"

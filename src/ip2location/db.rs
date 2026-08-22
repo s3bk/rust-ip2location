@@ -1,12 +1,18 @@
 use crate::{
-    common::{FROM_6TO4, FROM_TEREDO, MmapSource, Source, TO_6TO4, TO_TEREDO},
+    common::{FROM_6TO4, FROM_TEREDO, Source, TO_6TO4, TO_TEREDO},
     error::Error,
     ip2location::{
         consts::*,
         record::{self, LocationRecord},
     },
 };
+
+#[cfg(feature="mmap")]
 use memmap2::Mmap;
+
+#[cfg(feature="mmap")]
+use crate::common::MmapSource;
+
 use std::{
     fs::File,
     net::{IpAddr, Ipv6Addr},
@@ -33,6 +39,7 @@ pub struct LocationDB<S> {
     source: S,
 }
 
+#[cfg(feature="mmap")]
 impl LocationDB<MmapSource> {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         //! Loads a Ip2Location Database .bin file from path using
